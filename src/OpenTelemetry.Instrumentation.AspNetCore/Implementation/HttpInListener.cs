@@ -31,6 +31,7 @@ internal class HttpInListener : ListenerHandler
     internal static readonly ActivitySource ActivitySource = new(ActivitySourceName, Version.ToString());
     internal static readonly bool Net7OrGreater = Environment.Version.Major >= 7;
     internal static readonly bool Net10OrGreater = Environment.Version.Major >= 10;
+    internal static readonly bool Net11OrGreater = Environment.Version.Major >= 11;
 
     private const string DiagnosticSourceName = "Microsoft.AspNetCore";
 
@@ -101,6 +102,8 @@ internal class HttpInListener : ListenerHandler
             return;
         }
 
+        string? path = null;
+
         // Ensure context extraction irrespective of sampling decision
         var request = context.Request;
         var textMapPropagator = Propagators.DefaultTextMapPropagator;
@@ -140,6 +143,14 @@ internal class HttpInListener : ListenerHandler
                 // Set IsAllDataRequested to false for the activity created by the framework to only export the sibling activity and not the framework activity
                 activity.IsAllDataRequested = false;
                 activity = newOne;
+
+                if (Net11OrGreater)
+                {
+                    // ASP.NET Core 11 will set the url.path attribute, but only if the
+                    // activity is sampled. As we skip setting it for ASP.NET Core 11
+                    // we need to set it here otherwise it will not get set at all.
+                    SetUrlPathAttribute(request, activity);
+                }
             }
 
             Baggage.Current = ctx.Baggage;
@@ -173,13 +184,14 @@ internal class HttpInListener : ListenerHandler
                 ActivityInstrumentationHelper.SetKindProperty(activity, ActivityKind.Server);
             }
 
-            // See the spec: https://github.com/open-telemetry/semantic-conventions/blob/v1.40.0/docs/http/http-spans.md
-            var path = (request.PathBase.HasValue || request.Path.HasValue) ? (request.PathBase + request.Path).ToString() : "/";
+            if (!Net11OrGreater || !this.nativeAspNetCoreOpenTelemetryEnabled)
+            {
+                TelemetryHelper.RequestDataHelper.SetActivityDisplayName(activity, request.Method);
+            }
 
-            TelemetryHelper.RequestDataHelper.SetActivityDisplayName(activity, request.Method);
-
-            // ASP.NET Core 10 does not support OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS so we
-            // still need to set the HTTP method tag so that any override by the user is honoured.
+            // ASP.NET Core does not support OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS so we
+            // still need to set the display name and HTTP method tag so that any override
+            // by the user is honoured. See https://github.com/dotnet/aspnetcore/issues/65873.
             TelemetryHelper.RequestDataHelper.SetHttpMethodTag(activity, request.Method);
 
             if (!Net10OrGreater || !this.nativeAspNetCoreOpenTelemetryEnabled)
@@ -204,7 +216,8 @@ internal class HttpInListener : ListenerHandler
                 }
 
                 activity.SetTag(SemanticConventions.AttributeUrlScheme, request.Scheme);
-                activity.SetTag(SemanticConventions.AttributeUrlPath, path);
+
+                SetUrlPathAttribute(request, activity);
             }
 
             if (request.QueryString.HasValue)
@@ -230,6 +243,13 @@ internal class HttpInListener : ListenerHandler
                 AspNetCoreInstrumentationEventSource.Log.EnrichmentException(nameof(HttpInListener), nameof(this.OnStartActivity), activity.OperationName, ex);
             }
         }
+
+        void SetUrlPathAttribute(HttpRequest request, Activity activity)
+        {
+            // See the spec: https://github.com/open-telemetry/semantic-conventions/blob/v1.40.0/docs/http/http-spans.md
+            path ??= (request.PathBase.HasValue || request.Path.HasValue) ? (request.PathBase + request.Path).ToString() : "/";
+            activity.SetTag(SemanticConventions.AttributeUrlPath, path);
+        }
     }
 
     public void OnStopActivity(Activity activity, object? payload)
@@ -244,25 +264,28 @@ internal class HttpInListener : ListenerHandler
 
             var response = context.Response;
 
-#if !NETSTANDARD
-            var routePattern = context.GetHttpRoute();
-            if (!string.IsNullOrEmpty(routePattern))
+            if (!Net11OrGreater || !this.nativeAspNetCoreOpenTelemetryEnabled)
             {
-                TelemetryHelper.RequestDataHelper.SetActivityDisplayName(activity, context.Request.Method, routePattern);
-                activity.SetTag(SemanticConventions.AttributeHttpRoute, routePattern);
-            }
+#if NET
+                var routePattern = context.GetHttpRoute();
+                if (!string.IsNullOrEmpty(routePattern))
+                {
+                    TelemetryHelper.RequestDataHelper.SetActivityDisplayName(activity, context.Request.Method, routePattern);
+                    activity.SetTag(SemanticConventions.AttributeHttpRoute, routePattern);
+                }
 #endif
 
-            activity.SetTag(SemanticConventions.AttributeHttpResponseStatusCode, TelemetryHelper.GetBoxedStatusCode(response.StatusCode));
+                activity.SetTag(SemanticConventions.AttributeHttpResponseStatusCode, TelemetryHelper.GetBoxedStatusCode(response.StatusCode));
+
+                if (activity.Status == ActivityStatusCode.Unset)
+                {
+                    activity.SetStatus(SpanHelper.ResolveActivityStatusForHttpStatusCode(activity.Kind, response.StatusCode));
+                }
+            }
 
             if (this.options.EnableGrpcAspNetCoreSupport && TryGetGrpcMethod(activity, out var grpcMethod))
             {
                 AddGrpcAttributes(activity, grpcMethod, context);
-            }
-
-            if (activity.Status == ActivityStatusCode.Unset)
-            {
-                activity.SetStatus(SpanHelper.ResolveActivityStatusForHttpStatusCode(activity.Kind, response.StatusCode));
             }
 
             try

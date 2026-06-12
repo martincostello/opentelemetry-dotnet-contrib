@@ -391,7 +391,7 @@ internal class HttpInListener : ListenerHandler
         // https://github.com/open-telemetry/semantic-conventions/blob/main/docs/rpc/rpc-spans.md#span-name
         activity.DisplayName = details.DisplayName;
 
-        activity.SetTag(SemanticConventions.AttributeRpcSystem, GrpcTagHelper.RpcSystemGrpc);
+        activity.SetTag(SemanticConventions.AttributeRpcSystemName, GrpcTagHelper.RpcSystemGrpc);
 
         // see the spec https://github.com/open-telemetry/semantic-conventions/blob/v1.23.0/docs/rpc/rpc-spans.md
 
@@ -409,8 +409,7 @@ internal class HttpInListener : ListenerHandler
 
         if (details.IsParsed)
         {
-            activity.SetTag(SemanticConventions.AttributeRpcService, details.RpcService);
-            activity.SetTag(SemanticConventions.AttributeRpcMethod, details.RpcMethod);
+            activity.SetTag(SemanticConventions.AttributeRpcMethod, details.DisplayName);
 
             // Remove the grpc.method tag added by the gRPC .NET library
             activity.SetTag(GrpcTagHelper.GrpcMethodTagName, null);

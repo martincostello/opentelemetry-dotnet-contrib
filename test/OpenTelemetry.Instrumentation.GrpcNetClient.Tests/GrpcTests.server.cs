@@ -76,9 +76,10 @@ public partial class GrpcTests : IAsyncLifetime
 
         if (enableGrpcAspNetCoreSupport != null && enableGrpcAspNetCoreSupport.Equals("true", StringComparison.OrdinalIgnoreCase))
         {
-            Assert.Equal("grpc", activity.GetTagValue(SemanticConventions.AttributeRpcSystem));
-            Assert.Equal("greet.Greeter", activity.GetTagValue(SemanticConventions.AttributeRpcService));
-            Assert.Equal("SayHello", activity.GetTagValue(SemanticConventions.AttributeRpcMethod));
+            Assert.Equal("greet.Greeter/SayHello", activity.DisplayName);
+            Assert.Equal("grpc", activity.GetTagValue(SemanticConventions.AttributeRpcSystemName));
+            Assert.Null(activity.GetTagValue(SemanticConventions.AttributeRpcService));
+            Assert.Equal("greet.Greeter/SayHello", activity.GetTagValue(SemanticConventions.AttributeRpcMethod));
             Assert.Contains(activity.GetTagValue(SemanticConventions.AttributeClientAddress), clientLoopbackAddresses);
             Assert.NotEqual(0, activity.GetTagValue(SemanticConventions.AttributeClientPort));
             Assert.Null(activity.GetTagValue(GrpcTagHelper.GrpcMethodTagName));
@@ -87,6 +88,7 @@ public partial class GrpcTests : IAsyncLifetime
         }
         else
         {
+            Assert.Equal("POST /greet.Greeter/SayHello", activity.DisplayName);
             Assert.NotNull(activity.GetTagValue(GrpcTagHelper.GrpcMethodTagName));
             Assert.NotNull(activity.GetTagValue(GrpcTagHelper.GrpcStatusCodeTagName));
         }
@@ -154,9 +156,10 @@ public partial class GrpcTests : IAsyncLifetime
 
             if (enableGrpcAspNetCoreSupport != null && enableGrpcAspNetCoreSupport.Equals("true", StringComparison.OrdinalIgnoreCase))
             {
+                Assert.Equal("greet.Greeter/SayHello", activity.DisplayName);
                 Assert.Equal("grpc", activity.GetTagValue(SemanticConventions.AttributeRpcSystemName));
-                Assert.Equal("greet.Greeter", activity.GetTagValue(SemanticConventions.AttributeRpcService));
-                Assert.Equal("SayHello", activity.GetTagValue(SemanticConventions.AttributeRpcMethod));
+                Assert.Null(activity.GetTagValue(SemanticConventions.AttributeRpcService));
+                Assert.Equal("greet.Greeter/SayHello", activity.GetTagValue(SemanticConventions.AttributeRpcMethod));
                 Assert.Contains(activity.GetTagValue(SemanticConventions.AttributeNetPeerIp), clientLoopbackAddresses);
                 Assert.NotEqual(0, activity.GetTagValue(SemanticConventions.AttributeNetPeerPort));
                 Assert.Null(activity.GetTagValue(GrpcTagHelper.GrpcMethodTagName));
@@ -165,6 +168,7 @@ public partial class GrpcTests : IAsyncLifetime
             }
             else
             {
+                Assert.Equal("POST /greet.Greeter/SayHello", activity.DisplayName);
                 Assert.NotNull(activity.GetTagValue(GrpcTagHelper.GrpcMethodTagName));
                 Assert.NotNull(activity.GetTagValue(GrpcTagHelper.GrpcStatusCodeTagName));
             }

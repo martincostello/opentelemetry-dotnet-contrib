@@ -32,9 +32,9 @@ public class GrpcTests
         AssertTag(activity, SemanticConventions.AttributeClientPort, 4317);
         AssertTag(activity, SemanticConventions.AttributeHttpResponseStatusCode, 200);
         AssertTag(activity, SemanticConventions.AttributeRpcGrpcStatusCode, 13);
-        AssertTag(activity, SemanticConventions.AttributeRpcMethod, "Method");
-        AssertTag(activity, SemanticConventions.AttributeRpcService, "package.Service");
-        AssertTag(activity, SemanticConventions.AttributeRpcSystem, "grpc");
+        AssertTag(activity, SemanticConventions.AttributeRpcMethod, "package.Service/Method");
+        AssertTag(activity, SemanticConventions.AttributeRpcService, null);
+        AssertTag(activity, SemanticConventions.AttributeRpcSystemName, "grpc");
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public class GrpcTests
         AssertTag(activity, SemanticConventions.AttributeRpcGrpcStatusCode, null);
         AssertTag(activity, SemanticConventions.AttributeRpcMethod, null);
         AssertTag(activity, SemanticConventions.AttributeRpcService, null);
-        AssertTag(activity, SemanticConventions.AttributeRpcSystem, "grpc");
+        AssertTag(activity, SemanticConventions.AttributeRpcSystemName, "grpc");
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public class GrpcTests
         AssertTag(activity, GrpcTagHelper.GrpcMethodTagName, string.Empty);
         AssertTag(activity, GrpcTagHelper.GrpcStatusCodeTagName, "13");
         AssertTag(activity, SemanticConventions.AttributeRpcGrpcStatusCode, null);
-        AssertTag(activity, SemanticConventions.AttributeRpcSystem, null);
+        AssertTag(activity, SemanticConventions.AttributeRpcSystemName, null);
     }
 
     private static void AssertTag(Activity activity, string name, object? expected) =>

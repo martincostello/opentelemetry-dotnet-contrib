@@ -84,7 +84,7 @@ public partial class GrpcTests : IAsyncLifetime
             Assert.NotEqual(0, activity.GetTagValue(SemanticConventions.AttributeClientPort));
             Assert.Null(activity.GetTagValue(GrpcTagHelper.GrpcMethodTagName));
             Assert.Null(activity.GetTagValue(GrpcTagHelper.GrpcStatusCodeTagName));
-            Assert.Equal(0, activity.GetTagValue(SemanticConventions.AttributeRpcGrpcStatusCode));
+            Assert.Equal("OK", activity.GetTagValue(SemanticConventions.AttributeRpcResponseStatusCode));
         }
         else
         {
@@ -164,7 +164,7 @@ public partial class GrpcTests : IAsyncLifetime
                 Assert.NotEqual(0, activity.GetTagValue(SemanticConventions.AttributeNetPeerPort));
                 Assert.Null(activity.GetTagValue(GrpcTagHelper.GrpcMethodTagName));
                 Assert.Null(activity.GetTagValue(GrpcTagHelper.GrpcStatusCodeTagName));
-                Assert.Equal(0, activity.GetTagValue(SemanticConventions.AttributeRpcResponseStatusCode));
+                Assert.Equal("OK", activity.GetTagValue(SemanticConventions.AttributeRpcResponseStatusCode));
             }
             else
             {

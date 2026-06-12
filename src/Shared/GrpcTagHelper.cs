@@ -27,6 +27,31 @@ internal static class GrpcTagHelper
                int.TryParse(grpcStatusCodeTag as string, NumberStyles.None, CultureInfo.InvariantCulture, out statusCode);
     }
 
+    public static string ConvertStatusCodeToString(int statusCode)
+    {
+        return (GrpcStatusCanonicalCode)statusCode switch
+        {
+            GrpcStatusCanonicalCode.Ok => "OK",
+            GrpcStatusCanonicalCode.Cancelled => "CANCELLED",
+            GrpcStatusCanonicalCode.Unknown => "UNKNOWN",
+            GrpcStatusCanonicalCode.InvalidArgument => "INVALID_ARGUMENT",
+            GrpcStatusCanonicalCode.DeadlineExceeded => "DEADLINE_EXCEEDED",
+            GrpcStatusCanonicalCode.NotFound => "NOT_FOUND",
+            GrpcStatusCanonicalCode.AlreadyExists => "ALREADY_EXISTS",
+            GrpcStatusCanonicalCode.PermissionDenied => "PERMISSION_DENIED",
+            GrpcStatusCanonicalCode.ResourceExhausted => "RESOURCE_EXHAUSTED",
+            GrpcStatusCanonicalCode.FailedPrecondition => "FAILED_PRECONDITION",
+            GrpcStatusCanonicalCode.Aborted => "ABORTED",
+            GrpcStatusCanonicalCode.OutOfRange => "OUT_OF_RANGE",
+            GrpcStatusCanonicalCode.Unimplemented => "UNIMPLEMENTED",
+            GrpcStatusCanonicalCode.Internal => "INTERNAL",
+            GrpcStatusCanonicalCode.Unavailable => "UNAVAILABLE",
+            GrpcStatusCanonicalCode.DataLoss => "DATA_LOSS",
+            GrpcStatusCanonicalCode.Unauthenticated => "UNAUTHENTICATED",
+            _ => "UNKNOWN",
+        };
+    }
+
     public static bool TryParseRpcServiceAndRpcMethod(string grpcMethod, out string rpcService, out string rpcMethod)
     {
         var span = grpcMethod.AsSpan();

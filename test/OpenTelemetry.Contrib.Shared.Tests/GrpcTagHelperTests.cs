@@ -45,10 +45,10 @@ public class GrpcTagHelperTests
         Assert.True(validConversion);
 
         var statusCode = GrpcTagHelper.ResolveSpanStatusForGrpcStatusCodeOnClient(status);
-        activity.SetTag(SemanticConventions.AttributeRpcGrpcStatusCode, status);
+        activity.SetTag(SemanticConventions.AttributeRpcResponseStatusCode, GrpcTagHelper.ConvertStatusCodeToString(status));
 
         Assert.Equal(ActivityStatusCode.Unset, statusCode);
-        Assert.Equal(status, activity.GetTagValue(SemanticConventions.AttributeRpcGrpcStatusCode));
+        Assert.Equal(GrpcTagHelper.ConvertStatusCodeToString(status), activity.GetTagValue(SemanticConventions.AttributeRpcResponseStatusCode));
     }
 
     [Theory]
@@ -103,6 +103,32 @@ public class GrpcTagHelperTests
         Assert.Equal(expectedActivityStatusCode, result);
     }
 
+    [Theory]
+    [InlineData(0, "OK")] // Ok
+    [InlineData(-1, "UNKNOWN")] // Invalid negative status code
+    [InlineData(1, "CANCELLED")] // Cancelled
+    [InlineData(2, "UNKNOWN")] // Unknown
+    [InlineData(3, "INVALID_ARGUMENT")] // InvalidArgument
+    [InlineData(4, "DEADLINE_EXCEEDED")] // DeadlineExceeded
+    [InlineData(5, "NOT_FOUND")] // NotFound
+    [InlineData(6, "ALREADY_EXISTS")] // AlreadyExists
+    [InlineData(7, "PERMISSION_DENIED")] // PermissionDenied
+    [InlineData(8, "RESOURCE_EXHAUSTED")] // ResourceExhausted
+    [InlineData(9, "FAILED_PRECONDITION")] // FailedPrecondition
+    [InlineData(10, "ABORTED")] // Aborted
+    [InlineData(11, "OUT_OF_RANGE")] // OutOfRange
+    [InlineData(12, "UNIMPLEMENTED")] // Unimplemented
+    [InlineData(13, "INTERNAL")] // Internal
+    [InlineData(14, "UNAVAILABLE")] // Unavailable
+    [InlineData(15, "DATA_LOSS")] // DataLoss
+    [InlineData(16, "UNAUTHENTICATED")] // Unauthenticated
+    [InlineData(99, "UNKNOWN")] // Unknown status code
+    public void GrpcTagHelper_ConvertStatusCodeToString(int grpcStatusCode, string expectedStatusCode)
+    {
+        var result = GrpcTagHelper.ConvertStatusCodeToString(grpcStatusCode);
+        Assert.Equal(expectedStatusCode, result);
+    }
+
     [Fact]
     public void GrpcTagHelper_GetGrpcStatusCodeFromEmptyActivity()
     {
@@ -111,6 +137,6 @@ public class GrpcTagHelperTests
         var validConversion = GrpcTagHelper.TryGetGrpcStatusCodeFromActivity(activity, out var status);
         Assert.False(validConversion);
         Assert.Equal(-1, status);
-        Assert.Null(activity.GetTagValue(SemanticConventions.AttributeRpcGrpcStatusCode));
+        Assert.Null(activity.GetTagValue(SemanticConventions.AttributeRpcResponseStatusCode));
     }
 }

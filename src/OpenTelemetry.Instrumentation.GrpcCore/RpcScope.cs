@@ -216,7 +216,7 @@ internal abstract class RpcScope<TRequest, TResponse> : IDisposable
             return;
         }
 
-        this.activity.SetTag(SemanticConventions.AttributeRpcResponseStatusCode, statusCode);
+        this.activity.SetTag(SemanticConventions.AttributeRpcResponseStatusCode, GrpcTagHelper.ConvertStatusCodeToString(statusCode));
         this.activity.Stop();
     }
 

@@ -31,7 +31,7 @@ public class GrpcTests
         AssertTag(activity, SemanticConventions.AttributeClientAddress, "127.0.0.1");
         AssertTag(activity, SemanticConventions.AttributeClientPort, 4317);
         AssertTag(activity, SemanticConventions.AttributeHttpResponseStatusCode, 200);
-        AssertTag(activity, SemanticConventions.AttributeRpcGrpcStatusCode, 13);
+        AssertTag(activity, SemanticConventions.AttributeRpcResponseStatusCode, "INTERNAL");
         AssertTag(activity, SemanticConventions.AttributeRpcMethod, "package.Service/Method");
         AssertTag(activity, SemanticConventions.AttributeRpcService, null);
         AssertTag(activity, SemanticConventions.AttributeRpcSystemName, "grpc");
@@ -56,7 +56,7 @@ public class GrpcTests
         AssertTag(activity, GrpcTagHelper.GrpcStatusCodeTagName, "invalid");
         AssertTag(activity, SemanticConventions.AttributeClientAddress, null);
         AssertTag(activity, SemanticConventions.AttributeClientPort, 4317);
-        AssertTag(activity, SemanticConventions.AttributeRpcGrpcStatusCode, null);
+        AssertTag(activity, SemanticConventions.AttributeRpcResponseStatusCode, null);
         AssertTag(activity, SemanticConventions.AttributeRpcMethod, null);
         AssertTag(activity, SemanticConventions.AttributeRpcService, null);
         AssertTag(activity, SemanticConventions.AttributeRpcSystemName, "grpc");
@@ -79,7 +79,7 @@ public class GrpcTests
 
         AssertTag(activity, GrpcTagHelper.GrpcMethodTagName, string.Empty);
         AssertTag(activity, GrpcTagHelper.GrpcStatusCodeTagName, "13");
-        AssertTag(activity, SemanticConventions.AttributeRpcGrpcStatusCode, null);
+        AssertTag(activity, SemanticConventions.AttributeRpcResponseStatusCode, null);
         AssertTag(activity, SemanticConventions.AttributeRpcSystemName, null);
     }
 

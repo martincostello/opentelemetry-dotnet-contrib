@@ -176,7 +176,7 @@ internal sealed class GrpcClientDiagnosticListener : ListenerHandler
                 activity.SetStatus(GrpcTagHelper.ResolveSpanStatusForGrpcStatusCodeOnClient(status));
             }
 
-            activity.SetTag(SemanticConventions.AttributeRpcResponseStatusCode, status);
+            activity.SetTag(SemanticConventions.AttributeRpcResponseStatusCode, GrpcTagHelper.ConvertStatusCodeToString(status));
         }
 
         // Remove the grpc.status_code tag added by the gRPC .NET library

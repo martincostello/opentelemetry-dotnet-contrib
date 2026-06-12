@@ -419,8 +419,8 @@ internal class HttpInListener : ListenerHandler
 
             if (validStatusCode)
             {
-                // setting rpc.grpc.status_code
-                activity.SetTag(SemanticConventions.AttributeRpcGrpcStatusCode, grpcStatusCode);
+                // setting rpc.response.status_code
+                activity.SetTag(SemanticConventions.AttributeRpcResponseStatusCode, GrpcTagHelper.ConvertStatusCodeToString(grpcStatusCode));
             }
         }
     }

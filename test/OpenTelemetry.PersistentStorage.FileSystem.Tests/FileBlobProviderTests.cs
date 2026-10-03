@@ -1,7 +1,9 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Globalization;
 using System.Text;
+using OpenTelemetry.PersistentStorage.Abstractions;
 
 namespace OpenTelemetry.PersistentStorage.FileSystem.Tests;
 
@@ -181,5 +183,144 @@ public class FileBlobProviderTests
         Assert.False(File.Exists(leasePath));
 
         testDirectory.Delete(true);
+    }
+
+    [Fact]
+    public void FileBlobProvider_TryGetBlobReturnsFalseIfNoBlobs()
+    {
+        var testDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), Path.GetRandomFileName()));
+
+        try
+        {
+            using var blobProvider = new FileBlobProvider(testDirectory.FullName);
+
+            Assert.False(blobProvider.TryGetBlob(out var blob));
+            Assert.Null(blob);
+        }
+        finally
+        {
+            testDirectory.Delete(true);
+        }
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(10)]
+    [InlineData(250)]
+    public void FileBlobProvider_TryGetBlobReturnsNewestBlob(int count)
+    {
+        var testDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), Path.GetRandomFileName()));
+
+        try
+        {
+            using var blobProvider = new FileBlobProvider(testDirectory.FullName);
+
+            var now = DateTime.UtcNow;
+            var random = new Random(count);
+            string? expected = null;
+
+            // Create the blobs in a random order so that the newest blob is not the last one created
+            foreach (var offset in Enumerable.Range(0, count).OrderBy(_ => random.Next()))
+            {
+                var path = CreateBlobFile(blobProvider.DirectoryPath, now.AddSeconds(-offset));
+
+                if (offset == 0)
+                {
+                    expected = path;
+                }
+            }
+
+            // Files that are not blobs should be ignored
+            CreateFile(blobProvider.DirectoryPath, GetBlobFileName(now.AddSeconds(1)) + ".tmp");
+            CreateFile(blobProvider.DirectoryPath, GetBlobFileName(now.AddSeconds(1)) + "@" + FormatTimestamp(now.AddMinutes(1)) + ".lock");
+
+            Assert.True(blobProvider.TryGetBlob(out var blob));
+            Assert.Equal(expected, ((FileBlob)blob).FullPath);
+            AssertSameAsGetBlobs(blobProvider, blob);
+        }
+        finally
+        {
+            testDirectory.Delete(true);
+        }
+    }
+
+    [Fact]
+    public void FileBlobProvider_TryGetBlobReturnsNewestUnexpiredBlobIfNewestBlobNameIsNotValid()
+    {
+        var testDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), Path.GetRandomFileName()));
+
+        try
+        {
+            using var blobProvider = new FileBlobProvider(testDirectory.FullName);
+
+            var now = DateTime.UtcNow;
+
+            var older = CreateBlobFile(blobProvider.DirectoryPath, now.AddMinutes(-2));
+            var newer = CreateBlobFile(blobProvider.DirectoryPath, now.AddMinutes(-1));
+
+            // These names sort after the valid blob names but do not contain a valid timestamp
+            CreateFile(blobProvider.DirectoryPath, "zzzz.blob");
+            CreateFile(blobProvider.DirectoryPath, "9999-99-99T999999.9999999Z-" + Guid.NewGuid().ToString("N") + ".blob");
+
+            Assert.True(blobProvider.TryGetBlob(out var blob));
+            Assert.Equal(newer, ((FileBlob)blob).FullPath);
+            AssertSameAsGetBlobs(blobProvider, blob);
+
+            File.Delete(newer);
+
+            Assert.True(blobProvider.TryGetBlob(out blob));
+            Assert.Equal(older, ((FileBlob)blob).FullPath);
+            AssertSameAsGetBlobs(blobProvider, blob);
+        }
+        finally
+        {
+            testDirectory.Delete(true);
+        }
+    }
+
+    [Fact]
+    public void FileBlobProvider_TryGetBlobReturnsFalseIfAllBlobsHaveExpired()
+    {
+        var testDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), Path.GetRandomFileName()));
+
+        try
+        {
+            var retentionPeriod = TimeSpan.FromHours(1);
+            using var blobProvider = new FileBlobProvider(testDirectory.FullName, retentionPeriodInMilliseconds: (long)retentionPeriod.TotalMilliseconds);
+
+            var now = DateTime.UtcNow;
+
+            CreateBlobFile(blobProvider.DirectoryPath, now - retentionPeriod - TimeSpan.FromMinutes(2));
+            CreateBlobFile(blobProvider.DirectoryPath, now - retentionPeriod - TimeSpan.FromMinutes(1));
+            CreateFile(blobProvider.DirectoryPath, "not-a-blob.blob");
+
+            Assert.False(blobProvider.TryGetBlob(out var blob));
+            Assert.Null(blob);
+            Assert.Empty(blobProvider.GetBlobs());
+        }
+        finally
+        {
+            testDirectory.Delete(true);
+        }
+    }
+
+    private static void AssertSameAsGetBlobs(FileBlobProvider blobProvider, PersistentBlob blob)
+        => Assert.Equal(((FileBlob)blobProvider.GetBlobs().First()).FullPath, ((FileBlob)blob).FullPath);
+
+    private static string FormatTimestamp(DateTime timestamp)
+        => timestamp.ToString("yyyy-MM-ddTHHmmss.fffffffZ", CultureInfo.InvariantCulture);
+
+    private static string GetBlobFileName(DateTime timestamp)
+        => $"{FormatTimestamp(timestamp)}-{Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture)}.blob";
+
+    private static string CreateBlobFile(string directory, DateTime timestamp)
+        => CreateFile(directory, GetBlobFileName(timestamp));
+
+    private static string CreateFile(string directory, string fileName)
+    {
+        var path = Path.Combine(directory, fileName);
+        File.WriteAllBytes(path, [1, 2, 3]);
+        return path;
     }
 }

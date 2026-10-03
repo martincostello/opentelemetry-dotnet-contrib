@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+* Improved the performance of `FileBlobProvider.TryGetBlob()` by finding the
+  newest blob without sorting all of the blobs in the storage directory.
+  ([#TBD](https://github.com/open-telemetry/opentelemetry-dotnet-contrib/pull/TBD))
+
 ## 1.1.1
 
 Released 2026-Jul-17

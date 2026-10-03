@@ -3,6 +3,9 @@
 
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+#if NET
+using System.Runtime.CompilerServices;
+#endif
 using OpenTelemetry.Context.Propagation;
 using OpenTelemetry.Trace;
 using ActivitySourceFactory = OpenTelemetry.Trace.ActivitySourceFactory;
@@ -17,8 +20,25 @@ internal sealed class GrpcClientDiagnosticListener : ListenerHandler
     private const string OnStartEvent = "Grpc.Net.Client.GrpcOut.Start";
     private const string OnStopEvent = "Grpc.Net.Client.GrpcOut.Stop";
 
+#if NET
+    // The maximum number of entries added to TrimmedGrpcMethods (see below).
+    private const int MaxTrimmedGrpcMethods = 1024;
+#endif
+
     private static readonly PropertyFetcher<HttpRequestMessage> StartRequestFetcher = new("Request");
     private static readonly PropertyFetcher<HttpResponseMessage> StopResponseFetcher = new("Response");
+
+#if NET
+    // Grpc.Net.Client sets the grpc.method tag to Method.FullName, which is the same string instance
+    // for every call to a given method, so the trimmed name used for rpc.method and the span name
+    // is cached against that instance instead of being allocated for every call. The keys are held
+    // weakly, so the cache does not keep method names alive. Adding an entry is expensive, so only
+    // a limited number are ever added in case an application creates a new Method instance for
+    // every call. This is not used for the .NET Standard targets, which are what .NET Framework
+    // applications use, as there looking up a ConditionalWeakTable costs more than trimming the string.
+    private static readonly ConditionalWeakTable<string, string> TrimmedGrpcMethods = new();
+    private static int trimmedGrpcMethodsAdded;
+#endif
 
     private readonly GrpcClientTraceInstrumentationOptions options;
 
@@ -117,7 +137,11 @@ internal sealed class GrpcClientDiagnosticListener : ListenerHandler
             ActivityInstrumentationHelper.SetKindProperty(activity, ActivityKind.Client);
 
             GrpcTagHelper.SetGrpcSystemName(activity);
-            GrpcTagHelper.SetGrpcMethodAndDisplayNameFromActivity(activity);
+
+            if (GrpcTagHelper.GetGrpcMethodFromActivity(activity) is { } grpcMethod)
+            {
+                GrpcTagHelper.SetTrimmedGrpcMethodAndDisplayName(activity, GetTrimmedGrpcMethod(grpcMethod));
+            }
 
             var requestUri = request.RequestUri;
 
@@ -127,9 +151,7 @@ internal sealed class GrpcClientDiagnosticListener : ListenerHandler
                 var boxedPort = PortTelemetryHelper.GetBoxedPort(requestUri.Port, cacheValue: true);
                 activity.SetTag(SemanticConventions.AttributeServerPort, boxedPort);
 
-                var uriHostNameType = Uri.CheckHostName(requestUri.Host);
-
-                if (uriHostNameType is UriHostNameType.IPv4 or UriHostNameType.IPv6)
+                if (IsIPAddress(requestUri))
                 {
                     activity.SetTag(SemanticConventions.AttributeNetworkPeerAddress, requestUri.Host);
                     activity.SetTag(SemanticConventions.AttributeNetworkPeerPort, boxedPort);
@@ -196,9 +218,7 @@ internal sealed class GrpcClientDiagnosticListener : ListenerHandler
         {
             if (response.RequestMessage?.RequestUri is { } requestUri)
             {
-                var uriHostNameType = Uri.CheckHostName(requestUri.Host);
-
-                if (uriHostNameType is UriHostNameType.IPv4 or UriHostNameType.IPv6)
+                if (IsIPAddress(requestUri))
                 {
                     activity.SetTag(SemanticConventions.AttributeNetworkPeerAddress, requestUri.Host);
                     activity.SetTag(SemanticConventions.AttributeNetworkPeerPort, PortTelemetryHelper.GetBoxedPort(requestUri.Port, cacheValue: true));
@@ -227,5 +247,32 @@ internal sealed class GrpcClientDiagnosticListener : ListenerHandler
         {
             return StopResponseFetcher.TryFetch(payload, out response) && response != null;
         }
+    }
+
+    // Uri.HostNameType is determined when the URI is parsed, whereas Uri.CheckHostName(uri.Host)
+    // would validate the host again on every call.
+    internal static bool IsIPAddress(Uri uri)
+        => uri.HostNameType is UriHostNameType.IPv4 or UriHostNameType.IPv6;
+
+    internal static string GetTrimmedGrpcMethod(string grpcMethod)
+    {
+#if NET
+        if (TrimmedGrpcMethods.TryGetValue(grpcMethod, out var trimmedMethod))
+        {
+            return trimmedMethod;
+        }
+
+        trimmedMethod = GrpcTagHelper.TrimGrpcMethod(grpcMethod);
+
+        if (Volatile.Read(ref trimmedGrpcMethodsAdded) < MaxTrimmedGrpcMethods &&
+            TrimmedGrpcMethods.TryAdd(grpcMethod, trimmedMethod))
+        {
+            Interlocked.Increment(ref trimmedGrpcMethodsAdded);
+        }
+
+        return trimmedMethod;
+#else
+        return GrpcTagHelper.TrimGrpcMethod(grpcMethod);
+#endif
     }
 }

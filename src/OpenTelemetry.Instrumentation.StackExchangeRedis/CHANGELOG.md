@@ -9,6 +9,11 @@
   `EnrichActivityWithTimingEvents` is disabled.
   ([#5423](https://github.com/open-telemetry/opentelemetry-dotnet-contrib/pull/5423))
 
+* Reduced allocations when converting profiled commands to activities, and
+  when looking up the profiling session for a command on .NET Framework and
+  .NET Standard.
+  ([#TBD](https://github.com/open-telemetry/opentelemetry-dotnet-contrib/pull/TBD))
+
 ## 1.19.0-beta.1
 
 Released 2026-Sep-18

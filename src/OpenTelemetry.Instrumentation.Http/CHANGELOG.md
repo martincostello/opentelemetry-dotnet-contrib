@@ -5,6 +5,20 @@
 * Updated OpenTelemetry core component version(s) to `1.19.1`.
   ([#5329](https://github.com/open-telemetry/opentelemetry-dotnet-contrib/pull/5329))
 
+* Reduced the allocations made when setting the `url.full` attribute for
+  requests whose query string is redacted on .NET Framework and .NET 8.
+  ([#TBD](https://github.com/open-telemetry/opentelemetry-dotnet-contrib/pull/TBD))
+
+* Reduced the overhead of the HttpClient instrumentation on .NET 10 and later
+  by no longer subscribing to the `System.Net.Http.HttpRequestOut.Stop`
+  diagnostic event unless `EnrichWithHttpResponseMessage` is configured.
+  ([#TBD](https://github.com/open-telemetry/opentelemetry-dotnet-contrib/pull/TBD))
+
+* Fixed `http.response.status_code` being recorded as an `HttpStatusCode` enum
+  value instead of an `int` for response status codes outside of the range
+  `100`-`599`.
+  ([#TBD](https://github.com/open-telemetry/opentelemetry-dotnet-contrib/pull/TBD))
+
 ## 1.19.0
 
 Released 2026-Sep-18

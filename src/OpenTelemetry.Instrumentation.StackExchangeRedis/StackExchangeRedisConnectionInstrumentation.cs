@@ -124,7 +124,12 @@ internal sealed class StackExchangeRedisConnectionInstrumentation : IDisposable
 #if NET
         var session = this.Cache.GetOrAdd(cacheKey, static (_, parent) => (parent, new(), Baggage.Current), parent);
 #else
-        var session = this.Cache.GetOrAdd(cacheKey, _ => (parent, new(), Baggage.Current));
+        // Look up an existing session first, as the GetOrAdd() overload available here needs a
+        // closure over the parent, which is then only allocated when a session is created.
+        if (!this.Cache.TryGetValue(cacheKey, out var session))
+        {
+            session = this.GetOrAddSession(cacheKey, parent);
+        }
 #endif
 
         return session.Session;
@@ -169,6 +174,13 @@ internal sealed class StackExchangeRedisConnectionInstrumentation : IDisposable
             }
         }
     }
+
+#if !NET
+    private (Activity Activity, ProfilingSession Session, Baggage Baggage) GetOrAddSession(
+        (ActivityTraceId TraceId, ActivitySpanId SpanId) cacheKey,
+        Activity parent)
+        => this.Cache.GetOrAdd(cacheKey, _ => (parent, new(), Baggage.Current));
+#endif
 
     private void DrainEntries(object? state)
     {

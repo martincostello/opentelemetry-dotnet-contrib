@@ -146,6 +146,36 @@ public class FileBlobProvider : PersistentBlobProvider, IDisposable
 
     protected override bool OnTryGetBlob([NotNullWhen(true)] out PersistentBlob? blob)
     {
+        var retentionDeadline = DateTime.UtcNow - TimeSpan.FromMilliseconds(this.retentionPeriodInMilliseconds);
+
+        // Only the first blob that OnGetBlobs() would return is needed, so find the newest blob without sorting all of
+        // them. The same comparer as OrderByDescending() is used, and as that sort is stable, the first of any blobs that
+        // compare as equal is kept, so the same blob is found.
+        var comparer = Comparer<string>.Default;
+        string? newest = null;
+
+        foreach (var file in Directory.EnumerateFiles(this.DirectoryPath, "*.blob", SearchOption.TopDirectoryOnly))
+        {
+            if (newest == null || comparer.Compare(file, newest) > 0)
+            {
+                newest = file;
+            }
+        }
+
+        if (newest == null)
+        {
+            blob = null;
+            return false;
+        }
+
+        if (PersistentStorageHelper.GetDateTimeFromBlobName(newest) > retentionDeadline)
+        {
+            blob = new FileBlob(newest, this.directorySizeTracker);
+            return true;
+        }
+
+        // The newest blob has expired or its name does not contain a valid timestamp,
+        // so fall back to searching all of the blobs in order for one that has not.
         blob = this.OnGetBlobs().FirstOrDefault();
 
         return blob != null;

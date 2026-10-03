@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+* Improved the performance and reduced the allocations of `AWSXRayPropagator`
+  when injecting and extracting the `X-Amzn-Trace-Id` header.
+  ([#TBD](https://github.com/open-telemetry/opentelemetry-dotnet-contrib/pull/TBD))
+
 ## 1.19.1
 
 Released 2026-Sep-21

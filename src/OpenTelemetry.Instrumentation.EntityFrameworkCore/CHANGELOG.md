@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+* Reduced allocations by only enabling the EF Core diagnostic events which the
+  instrumentation handles, so EF Core no longer creates event data for other
+  events (such as change tracking events raised for every tracked entity).
+  ([#TBD](https://github.com/open-telemetry/opentelemetry-dotnet-contrib/pull/TBD))
+
+* Improved performance when the same query text is sanitized more than once
+  in a row on the same thread, such as when both the Entity Framework Core and
+  SqlClient instrumentations are enabled, or for commands which are not sampled.
+  ([#TBD](https://github.com/open-telemetry/opentelemetry-dotnet-contrib/pull/TBD))
+
 ## 1.19.1-beta.1
 
 Released 2026-Sep-24

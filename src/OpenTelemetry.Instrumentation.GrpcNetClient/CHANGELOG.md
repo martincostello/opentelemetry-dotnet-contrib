@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+* Reduced CPU usage and allocations when setting `rpc.method` and
+  `network.peer.address` for gRPC client calls.
+  ([#TBD](https://github.com/open-telemetry/opentelemetry-dotnet-contrib/pull/TBD))
+
 ## 1.19.1-beta.1
 
 Released 2026-Sep-21

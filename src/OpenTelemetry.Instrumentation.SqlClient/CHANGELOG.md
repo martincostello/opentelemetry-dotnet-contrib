@@ -5,6 +5,27 @@
 * Updated OpenTelemetry core component version(s) to `1.19.1`.
   ([#5329](https://github.com/open-telemetry/opentelemetry-dotnet-contrib/pull/5329))
 
+* Improved performance on .NET Framework by only subscribing to the SqlClient
+  `EventSource` events used by the instrumentation, rather than to all of them.
+  ([#TBD](https://github.com/open-telemetry/opentelemetry-dotnet-contrib/pull/TBD))
+
+* Fixed `db.client.operation.duration` metrics on .NET having different
+  attributes depending on whether the command was sampled. When not sampled,
+  the `db.operation.name` and `db.query.summary` attributes were missing for
+  stored procedures, and the `error.type` and `db.response.status_code`
+  attributes were missing for commands which failed.
+  ([#TBD](https://github.com/open-telemetry/opentelemetry-dotnet-contrib/pull/TBD))
+
+* Fixed `db.client.operation.duration` metrics on .NET Framework not including
+  the `db.namespace`, `server.address` and `server.port` attributes for commands
+  which are not sampled.
+  ([#TBD](https://github.com/open-telemetry/opentelemetry-dotnet-contrib/pull/TBD))
+
+* Improved performance when the same query text is sanitized more than once
+  in a row on the same thread, such as when both the Entity Framework Core and
+  SqlClient instrumentations are enabled, or for commands which are not sampled.
+  ([#TBD](https://github.com/open-telemetry/opentelemetry-dotnet-contrib/pull/TBD))
+
 ## 1.19.0
 
 Released 2026-Sep-18
